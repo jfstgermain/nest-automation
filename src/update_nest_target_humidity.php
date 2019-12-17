@@ -3,9 +3,10 @@
 require_once dirname(__FILE__) . '/../lib/nest.class.php';
 
 // Your Nest username and password.
-define('USERNAME', 'YOUR_NEST_USERNAME');
-define('PASSWORD', 'YOUR_NEST_PASSWORD');
-
+define('USERNAME', $_SERVER["NEST_USERNAME"]);
+define('PASSWORD', $_SERVER["NEST_PASSWORD"]);
+define('POSTAL_CODE', $_SERVER["NEST_POSTAL_CODE"]);
+define('COUNTRY', $_SERVER["NEST_COUNTRY"]);
 define("MAX_HUMIDITY", 45);
 define("MIN_HUMIDITY", 15);
 define("LOG_FILENAME", "/tmp/humidity.log");
@@ -18,16 +19,9 @@ $current_target_humidity = $nest_info->target->humidity;
 $inside_hum = $nest_info->current_state->humidity;
 $is_heating = $nest_info->current_state->heat;
 
-//print_r($nest_info);
-//print "Current Nest target humidity = $current_target_humidity%, actual humidity = $inside_hum%\n";
-
-if (!isset($argv[1])) {
-  throw new Exception("Missing input for outside temperature");
-}
-
-$outside_temp = $argv[1];
-$outside_hum = $argv[2];
-
+$weather_data = $nest->getWeather(POSTAL_CODE, COUNTRY);
+$outside_temp = ($weather_data->outside_temperature * 1.8) + 32;
+$outside_hum = $weather_data->outside_humidity;
 
 // set target humidity based on outside temperature (in Fahrenheit)
 if ($outside_temp >= 40) {
@@ -51,7 +45,13 @@ $humidity_difference = $inside_hum - $target_hum;
 //debug_log("humidity difference = $humidity_difference");
 
 if ($is_heating && $humidity_difference < 4) {
-  // Nest likes to get the humidity up to 5% more than what you set it to.  So, if you set it to 30%, it will humidify up to 35%.  It tends to run the heat for a while, then after the heat shuts off start humidifying.  It's more efficient to humidify while the heat is running since it doesn't consume any extra electricity because the fan is already running.  So, if the heat is currently running, we'll bump up the target humidity temporarily to preemptively start humidifying, so that once the heat shuts off, we hopefully won't need to run the humidifier on its own
+  // Nest likes to get the humidity up to 5% more than what you set it to.  So,
+  // if you set it to 30%, it will humidify up to 35%.  It tends to run the heat for a
+  // while, then after the heat shuts off start humidifying.  It's more efficient to humidify
+  // while the heat is running since it doesn't consume any extra electricity because the fan is
+  // already running.  So, if the heat is currently running, we'll bump up the target humidity
+  // temporarily to preemptively start humidifying, so that once the heat shuts off, we hopefully
+  // won't need to run the humidifier on its own
   $log_string .= "Bumping target humidity up by 5% because heat is on. ";
   $target_hum += 5;
 }
@@ -68,7 +68,6 @@ if ($should_change) {
 } else {
   $log_string .= "Maintaining Nest target humidity of $target_hum% for outside temp $outside_temp (current humidity inside = $inside_hum%, outside = $outside_hum%)";
 }
-
 
 debug_log($log_string);
 
