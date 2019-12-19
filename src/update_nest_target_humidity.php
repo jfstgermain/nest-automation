@@ -20,7 +20,8 @@ $inside_hum = $nest_info->current_state->humidity;
 $is_heating = $nest_info->current_state->heat;
 
 $weather_data = $nest->getWeather(POSTAL_CODE, COUNTRY);
-$outside_temp = ($weather_data->outside_temperature * 1.8) + 32; // convert to celcius
+// $outside_temp = ($weather_data->outside_temperature * 1.8) + 32; // convert to celcius
+$outside_temp = $weather_data->outside_temperature;
 $outside_hum = $weather_data->outside_humidity;
 
 // set target humidity based on outside temperature (in Fahrenheit)
