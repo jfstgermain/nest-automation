@@ -65,9 +65,9 @@ $target_hum = min($target_hum, MAX_HUMIDITY);
 $should_change = $target_hum != $current_target_humidity;
 
 if ($should_change) {
-  $log_string .= "Setting Nest target humidity to $target_hum% for outside temp $outside_temp c (current humidity inside = $inside_hum%, outside = $outside_hum%)";
+  $log_string .= "Setting Nest target humidity to $target_hum% for outside temp {$outside_temp}°c (current humidity inside = $inside_hum%, outside = $outside_hum%)";
 } else {
-  $log_string .= "Maintaining Nest target humidity of $target_hum% for outside temp $outside_temp c (current humidity inside = $inside_hum%, outside = $outside_hum%)";
+  $log_string .= "Maintaining Nest target humidity of $target_hum% for outside temp {$outside_temp}°c (current humidity inside = $inside_hum%, outside = $outside_hum%)";
 }
 
 debug_log($log_string);
