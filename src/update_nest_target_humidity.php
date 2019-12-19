@@ -20,23 +20,23 @@ $inside_hum = $nest_info->current_state->humidity;
 $is_heating = $nest_info->current_state->heat;
 
 $weather_data = $nest->getWeather(POSTAL_CODE, COUNTRY);
-$outside_temp = ($weather_data->outside_temperature * 1.8) + 32;
+$outside_temp = ($weather_data->outside_temperature * 1.8) + 32; // convert to celcius
 $outside_hum = $weather_data->outside_humidity;
 
 // set target humidity based on outside temperature (in Fahrenheit)
-if ($outside_temp >= 40) {
+if ($outside_temp >= 4) {
   $target_hum = 45;
-} elseif ($outside_temp >= 30) {
+} elseif ($outside_temp >= -1) {
   $target_hum = 40;
-} elseif ($outside_temp >= 20) {
+} elseif ($outside_temp >= -7) {
   $target_hum = 35;
-} elseif ($outside_temp >= 10) {
+} elseif ($outside_temp >= -12) {
   $target_hum = 30;
-} elseif ($outside_temp >= 0) {
+} elseif ($outside_temp >= -18) {
   $target_hum = 25;
-} elseif ($outside_temp >= -10) {
+} elseif ($outside_temp >= -23) {
   $target_hum = 20;
-} elseif ($outside_temp >= -20) {
+} elseif ($outside_temp >= -29) {
   $target_hum = 15;
 }
 
@@ -64,9 +64,9 @@ $target_hum = min($target_hum, MAX_HUMIDITY);
 $should_change = $target_hum != $current_target_humidity;
 
 if ($should_change) {
-  $log_string .= "Setting Nest target humidity to $target_hum% for outside temp $outside_temp (current humidity inside = $inside_hum%, outside = $outside_hum%)";
+  $log_string .= "Setting Nest target humidity to $target_hum% for outside temp $outside_temp c (current humidity inside = $inside_hum%, outside = $outside_hum%)";
 } else {
-  $log_string .= "Maintaining Nest target humidity of $target_hum% for outside temp $outside_temp (current humidity inside = $inside_hum%, outside = $outside_hum%)";
+  $log_string .= "Maintaining Nest target humidity of $target_hum% for outside temp $outside_temp c (current humidity inside = $inside_hum%, outside = $outside_hum%)";
 }
 
 debug_log($log_string);
