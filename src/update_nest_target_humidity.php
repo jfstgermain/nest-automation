@@ -85,5 +85,5 @@ function debug_log($message)
 
   $message .= "\n";
   file_put_contents(LOG_FILENAME, "$date $message", FILE_APPEND);
-  print $message;
+  print "({$date}) $message";
 }
