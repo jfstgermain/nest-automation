@@ -26,9 +26,9 @@ $outside_hum = $weather_data->outside_humidity;
 
 // set target humidity based on outside temperature (in Fahrenheit)
 if ($outside_temp >= 4) {
-  $target_hum = 45;
-} elseif ($outside_temp >= -1) {
   $target_hum = 40;
+} elseif ($outside_temp >= -1) {
+  $target_hum = 37;
 } elseif ($outside_temp >= -7) {
   $target_hum = 35;
 } elseif ($outside_temp >= -12) {
