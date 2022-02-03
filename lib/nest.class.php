@@ -365,6 +365,7 @@ class Nest
                     'last_status'           => date(DATETIME_FORMAT, $sensor->last_updated_at),
                     'location'              => $sensor->structure_id,
                     'where'                 => $this->getWhereById($sensor->where_id),
+                    'serial_number'         => $sensor_serial,
                 );
                 return $infos;
             }
@@ -513,13 +514,23 @@ class Nest
             $infos->demand_response = (object)array(
                 'has_active_event' => false,
                 'has_active_peak_period' => false,
-                'events' => $this->last_status->demand_response->{$serial_number}->active_events
+                'has_user_opted_out' => false,
+                'events' => $this->last_status->demand_response->{$serial_number}->active_events,
             );
             foreach ($infos->demand_response->events as &$event) {
-                $event->is_peak_period_active = $event->peak_period_start_time_utc <= time() && time() < $event->stop_time_utc;
-                $event->is_event_active = $event->start_time_utc <= time() && time() < $event->stop_time_utc;
-                $infos->demand_response->has_active_peak_period = $infos->demand_response->has_active_peak_period || $event->is_peak_period_active;
-                $infos->demand_response->has_active_event = $infos->demand_response->has_active_event || $event->is_event_active;
+                $event = $this->getDemandResponseEventDetails($event->id);
+
+                $is_event_active = $event->start_time_utc <= time() && time() < $event->stop_time_utc;
+                $infos->demand_response->has_active_event = $infos->demand_response->has_active_event || $is_event_active;
+                $infos->demand_response->has_active_peak_period = $infos->demand_response->has_active_peak_period || $event->in_peak_period;
+
+                if ($event->in_peak_period || $is_event_active) {
+                    $infos->demand_response->has_user_opted_out = $event->user_opted_out;
+                }
+
+                //Set these additional properties for non-breaking changes
+                $event->is_peak_period_active = $event->in_peak_period;
+                $event->is_event_active = $is_event_active;
             }
         }
 
@@ -615,6 +626,63 @@ class Nest
         $temp_high = $this->temperatureInCelsius($temp_high, $serial_number);
         $data = json_encode(array('target_change_pending' => TRUE, 'target_temperature_low' => $temp_low, 'target_temperature_high' => $temp_high));
         return $this->doPOST("/v2/put/shared." . $serial_number, $data);
+    }
+
+    /**
+     * Change the thermostat target temperature device
+     *
+     * @param string $sensor_serial_number The thermostat or thermostat sensor serial number to use for target temperature
+     * @param string $thermostat_serial_number The thermostat serial number. Defaults to the first device of the account.
+     *
+     * @return stdClass|bool The object returned by the API call, or FALSE on error.
+     */
+    public function setTargetTemperatureSensor($sensor_serial_number, $thermostat_serial_number = NULL) {
+        $thermostat_serial_number = $this->getDefaultSerial($thermostat_serial_number);
+        $payload = array(
+            'objects' => array(
+                array(
+                    'object_key' => "rcs_settings.$thermostat_serial_number",
+                    'op' => 'MERGE',
+                    'value' => array(
+                        'active_rcs_sensors' => array(),
+                        'rcs_control_setting' => 'OFF',
+                    ),
+                ),
+            )
+        );
+
+        if ($thermostat_serial_number !== $sensor_serial_number) {
+            $payload['objects'][0]['value'] = array(
+                'active_rcs_sensors' => array("kryptonite.$sensor_serial_number"),
+                'rcs_control_setting' => 'OVERRIDE',
+            );
+        }
+        return $this->doPOST('/v5/put', json_encode($payload));
+    }
+
+    /**
+     * Get demand response event details
+     *
+     * @param string $event_id The Nest demand response event id
+     *
+     * @return stdClass|bool The event detail object returned by the API call, or FALSE on error.
+     */
+    protected function getDemandResponseEventDetails($event_id) {
+        $payload = array(
+            'objects' => array(
+                array('object_key' => $event_id)
+            )
+        );
+
+        $event_response = $this->doPOST('/v5/subscribe', json_encode($payload));
+        if (empty($event_response->objects)) {
+            return $event_response;
+         }
+
+         $event_detail = $event_response->objects[0]->value;
+         //Note: cruise_control_temperature is 0/32 until the event is active
+         $event_detail->cruise_control_temperature = $this->temperatureInUserScale($event_detail->cruise_control_temperature);
+         return $event_detail;
     }
 
     /**
@@ -1464,11 +1532,11 @@ class Nest
             throw new RuntimeException("Error: Response from request to $url is not valid JSON data. Response: " . str_replace(array("\n","\r"), '', $response), NESTAPI_ERROR_NOT_JSON_RESPONSE);
         }
 
-        if ($info['http_code'] == 400) {
+        if ($info['http_code'] >= 400) {
             if (!is_object($json)) {
-                throw new RuntimeException("Error: HTTP 400 from request to $url. Response: " . str_replace(array("\n","\r"), '', $response), NESTAPI_ERROR_API_OTHER_ERROR);
+                throw new RuntimeException("Error: HTTP {$info['http_code']} from request to $url. Response: " . str_replace(array("\n","\r"), '', $response), NESTAPI_ERROR_API_OTHER_ERROR);
             }
-            throw new RuntimeException("Error: HTTP 400 from request to $url. JSON error: $json->error - $json->error_description", NESTAPI_ERROR_API_JSON_ERROR);
+            throw new RuntimeException("Error: HTTP {$info['http_code']} from request to $url. JSON error: $json->error - $json->error_description", NESTAPI_ERROR_API_JSON_ERROR);
         }
 
         // No body returned; return a boolean value that confirms a 200 OK was returned.
