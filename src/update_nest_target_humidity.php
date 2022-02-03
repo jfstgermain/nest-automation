@@ -3,13 +3,15 @@
 require_once dirname(__FILE__) . '/../lib/nest.class.php';
 
 // Your Nest username and password.
-define('USERNAME', $_SERVER["NEST_USERNAME"]);
-define('PASSWORD', $_SERVER["NEST_PASSWORD"]);
-define('POSTAL_CODE', $_SERVER["NEST_POSTAL_CODE"]);
-define('COUNTRY', $_SERVER["NEST_COUNTRY"]);
+//define('USERNAME', $_SERVER["NEST_USERNAME"]);
+//define('PASSWORD', $_SERVER["NEST_PASSWORD"]);
+define('POSTAL_CODE', $_SERVER["POSTAL_CODE"]);
+define('COUNTRY', $_SERVER["COUNTRY"]);
 define("MAX_HUMIDITY", 45);
 define("MIN_HUMIDITY", 15);
 define("LOG_FILENAME", "/tmp/humidity.log");
+define("ISSUE_TOKEN", $_SERVER["ISSUE_TOKEN"]);
+define("COOKIES", $_SERVER["COOKIES"]);
 
 $nest = new Nest();
 
